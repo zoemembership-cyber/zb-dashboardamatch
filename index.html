@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZB Live Matching Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#1a1a2e;--soft:#4a4a6a;--muted:#9090b0;
+  --bg:#f5f4f0;--card:#fff;
+  --purple:#5c4fcf;--pl:#eeecfb;
+  --green:#3a9e6e;--gl:#eaf7f1;
+  --amber:#d4820a;--al:#fff8e6;
+  --red:#c94040;--rl:#fff0f0;
+  --blue:#2a7fc0;--bl:#e8f3fc;
+  --border:#e4e2f0;--r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6}
+
+header{background:var(--ink);padding:32px 40px 24px;position:relative;overflow:hidden}
+header::after{content:'';position:absolute;top:-80px;right:-40px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(92,79,207,.35) 0%,transparent 70%);pointer-events:none}
+header h1{font-family:'DM Serif Display',serif;font-size:26px;color:white;margin-bottom:4px}
+header p{color:rgba(255,255,255,.5);font-size:13px}
+.stat-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.stat{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 16px;color:white}
+.stat .n{font-size:20px;font-weight:600}
+.stat .l{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.4px}
+
+.tabs{display:flex;background:white;border-bottom:2px solid var(--border);padding:0 40px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow-x:auto}
+.tab{padding:14px 18px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.tab.active{color:var(--purple);border-bottom-color:var(--purple)}
+
+.page{display:none;padding:28px 40px;max-width:1100px;margin:0 auto}
+.page.active{display:block}
+
+.sec{font-family:'DM Serif Display',serif;font-size:18px;margin:24px 0 12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin-bottom:12px}
+
+.alert{border-radius:var(--r);padding:13px 17px;margin-bottom:10px;border-left:4px solid}
+.alert.red{background:var(--rl);border-color:var(--red)}
+.alert.amber{background:var(--al);border-color:var(--amber)}
+.alert.green{background:var(--gl);border-color:var(--green)}
+.alert.blue{background:var(--bl);border-color:var(--blue)}
+.alert-title{font-weight:700;font-size:13px;margin-bottom:3px}
+.alert p{font-size:13px;color:var(--soft);line-height:1.6}
+
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.3px;margin-right:3px}
+.tag.purple{background:var(--pl);color:var(--purple)}
+.tag.green{background:var(--gl);color:var(--green)}
+.tag.amber{background:var(--al);color:var(--amber)}
+.tag.red{background:var(--rl);color:var(--red)}
+.tag.gray{background:#f0eff5;color:var(--soft)}
+.tag.blue{background:var(--bl);color:var(--blue)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.rcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;transition:box-shadow .15s}
+.rcard:hover{box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.rcard.pending{opacity:.6;border-style:dashed}
+.rname{font-weight:600;font-size:14px;margin-bottom:2px}
+.remail{font-size:11px;color:var(--muted);margin-bottom:7px}
+.rbadge{position:absolute;top:11px;right:11px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px}
+.rbadge.yes{background:var(--gl);color:var(--green)}
+.rbadge.no{background:#f5f5f5;color:#aaa}
+.rrow{display:flex;gap:6px;font-size:12px;padding:2px 0}
+.rrow .lbl{color:var(--muted);width:78px;flex-shrink:0}
+.rrow .val{color:var(--soft)}
+
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:var(--ink);color:white;padding:8px 12px;text-align:left;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl tr:hover td{background:var(--bg)}
+
+.loading{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
+.loading .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.refresh-btn{background:transparent;border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--soft);cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.refresh-btn:hover{background:var(--bg);border-color:var(--purple);color:var(--purple)}
+
+.bar-wrap{display:flex;align-items:center;gap:8px;margin:4px 0}
+.bar-bg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:var(--purple);transition:width .5s}
+.bar-label{font-size:12px;color:var(--soft);min-width:30px;text-align:right}
+
+.search{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--card);outline:none;margin-bottom:16px}
+.search:focus{border-color:var(--purple)}
+
+.interest-cloud{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.interest-pill{background:var(--pl);color:var(--purple);font-size:12px;padding:4px 10px;border-radius:20px;font-weight:500}
+.interest-pill.big{font-size:13px;padding:5px 12px;background:var(--purple);color:white}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1>ZB Housing+ · Live Dashboard</h1>
+      <p id="last-updated">Loading responses from Google Sheets...</p>
+    </div>
+    <button class="refresh-btn" onclick="loadData()">Refresh data</button>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="n" id="stat-total">—</div><div class="l">Total residents</div></div>
+    <div class="stat"><div class="n" id="stat-submitted">—</div><div class="l">Submitted</div></div>
+    <div class="stat"><div class="n" id="stat-pending">—</div><div class="l">Pending</div></div>
+    <div class="stat"><div class="n" id="stat-deposit">—</div><div class="l">Deposit confirmed</div></div>
+    <div class="stat"><div class="n" id="stat-esa">—</div><div class="l">ESA/pet</div></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab" onclick="showTab('responses')">All Responses</div>
+  <div class="tab" onclick="showTab('pending')">Pending</div>
+  <div class="tab" onclick="showTab('alerts')">Critical Flags</div>
+  <div class="tab" onclick="showTab('interests')">Interests & Community</div>
+  <div class="tab" onclick="showTab('matching')">Matching Suggestions</div>
+</div>
+
+<!-- OVERVIEW -->
+<div class="page active" id="page-overview">
+  <div id="overview-content"><div class="loading"><div class="spinner"></div>Loading live data...</div></div>
+</div>
+
+<!-- ALL RESPONSES -->
+<div class="page" id="page-responses">
+  <input class="search" type="text" id="search-input" placeholder="Search by name, email, major, interest..." oninput="filterCards()">
+  <div class="grid" id="responses-grid"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+</div>
+
+<!-- PENDING -->
+<div class="page" id="page-pending">
+  <div id="pending-content"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+</div>
+
+<!-- ALERTS -->
+<div class="page" id="page-alerts">
+  <div id="alerts-content">
+    <div class="loading"><div class="spinner"></div>Loading...</div>
+  </div>
+</div>
+
+<!-- INTERESTS -->
+<div class="page" id="page-interests">
+  <div id="interests-content"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+</div>
+
+<!-- MATCHING -->
+<div class="page" id="page-matching">
+  <div id="matching-content"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+</div>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqKYPRv3Z-KG4SuXxObVgD9Q790ukT1dN-PEBLZmskS6_ihW5SwNCP3QQGO9JG8gfVCSy5a8isjm8Y/pub?gid=2108633311&single=true&output=csv';
+
+const MASTER = [
+  {name:'Claudia Schweisow',email:'cschwiesow@wisc.edu',room:'26',tags:['officer']},
+  {name:'Rachel Wang',email:'qwang572@wisc.edu',room:'27',tags:['officer']},
+  {name:'Danika Wanish',email:'dwanish@wisc.edu',room:'25',tags:[]},
+  {name:'Madeline Kwong',email:'mkwong5@wisc.edu',room:'29',tags:['officer']},
+  {name:'Camila Becerril-Gutierrez',email:'r054lv4.2@gmail.com',room:'33',tags:['paired']},
+  {name:'Ruizi Wu',email:'rwu223@wisc.edu',room:'33',tags:['paired']},
+  {name:'Tess Parrot',email:'tparrott@wisc.edu',room:'32',tags:[]},
+  {name:'Ella Winter',email:'ecwinter2@wisc.edu',room:'39',tags:[]},
+  {name:'Neha Srinivasula',email:'nsrinivasula@wisc.edu',room:'36',tags:[]},
+  {name:'Amara Seth',email:'amaraseth4@gmail.com',room:'37',tags:[]},
+  {name:'Elia Zumbado',email:'melia.zumbado@gmail.com',room:'TBD',tags:['officer']},
+  {name:'Livia Bakken',email:'lkbakken@wisc.edu',room:'43',tags:[]},
+  {name:'Keyla Granados',email:'kgranados@wisc.edu',room:'44',tags:[]},
+  {name:'Crystal Gamon',email:'crystal.gamon@wisc.edu',room:'TBD',tags:[]},
+  {name:'Tessara Clark',email:'taclark5@wisc.edu',room:'TBD',tags:[]},
+  {name:'Gianna Agresti',email:'gagresti@luc.edu',room:'TBD',tags:['paired']},
+  {name:'Elling Lottridge',email:'elottridge@wisc.edu',room:'TBD',tags:[]},
+  {name:'Ivana Virden',email:'ivanaevirden@gmail.com',room:'TBD',tags:[]},
+  {name:'Madison La Crosse',email:'mlacrosse8504@gmail.com',room:'TBD',tags:['special']},
+  {name:'Ava Erickson',email:'avagerickson@gmail.com',room:'TBD',tags:[]},
+  {name:'Yasmeen Patrick',email:'ypatrick@wisc.edu',room:'TBD',tags:['special']},
+  {name:'Eva Hecht',email:'ehecht4@wisc.edu',room:'TBD',tags:['special']},
+  {name:'Kathleen Wilhelm',email:'kwilhelm4@wisc.edu',room:'TBD',tags:[]},
+  {name:'Milana Lutes',email:'mlutes@wisc.edu',room:'TBD',tags:['special']},
+  {name:'Yiting Kong',email:'ykong56@wisc.edu',room:'TBD',tags:[]},
+  {name:'Hunter Davies',email:'davieshunter7@gmail.com',room:'TBD',tags:['special']},
+  {name:'Julia Jones',email:'jjjones8@wisc.edu',room:'TBD',tags:[]},
+  {name:'Raquel Lee',email:'ylee922@wisc.edu',room:'TBD',tags:[]},
+  {name:'Meredith Serrano',email:'meserrano@wisc.edu',room:'TBD',tags:[]},
+  {name:'Valeria Castaneda',email:'vcastaneda@wisc.edu',room:'TBD',tags:[]},
+  {name:'Julien Zheng',email:'jzhang2976@wisc.edu',room:'TBD',tags:[]},
+  {name:'Samantha Gaustad',email:'sgaustad@wisc.edu',room:'TBD',tags:[]},
+  {name:'Minjeong Jin',email:'minjin.official@gmail.com',room:'TBD',tags:[]},
+  {name:'Linda Sarahi',email:'lindasarahizapataaguilar@gmail.com',room:'TBD',tags:['special']},
+  {name:'Nyx Morris',email:'aemorris4@wisc.edu',room:'TBD',tags:['special']},
+  {name:'Inniya Krishnan',email:'inniya.skrishnan@gmail.com',room:'TBD',tags:['special']},
+  {name:'Sian Teshima',email:'steshima@wisc.edu',room:'42',tags:[]},
+  {name:'Haley Michalski',email:'haley.michalski@yahoo.com',room:'34',tags:['special']},
+  {name:'Karen Chengxi Luo',email:'',room:'TBD',tags:[]}
+];
+
+let responses = [];
+let allCards = [];
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  const headers = parseCSVLine(lines[0]);
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseCSVLine(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h.trim()] = (vals[idx] || '').trim(); });
+    rows.push(obj);
+  }
+  return {headers, rows};
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function matchToMaster(row) {
+  const emailField = row['School email address'] || row['Email Address'] || '';
+  const nameField = (row['Full legal name'] || '').toLowerCase();
+  for (const m of MASTER) {
+    if (m.email && emailField.toLowerCase().includes(m.email.toLowerCase())) return m;
+    if (m.email && m.email.toLowerCase().includes(emailField.toLowerCase()) && emailField.length > 4) return m;
+  }
+  for (const m of MASTER) {
+    const mn = m.name.toLowerCase();
+    if (nameField && (mn.includes(nameField.split(' ')[0]) || nameField.includes(mn.split(' ')[0]))) return m;
+  }
+  return null;
+}
+
+async function loadData() {
+  document.getElementById('last-updated').textContent = 'Refreshing...';
+  try {
+    const res = await fetch(CSV_URL + '&t=' + Date.now());
+    const text = await res.text();
+    const {headers, rows} = parseCSV(text);
+    responses = rows;
+    renderAll();
+    document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString() + ' · ' + rows.length + ' responses loaded';
+  } catch(e) {
+    document.getElementById('last-updated').textContent = 'Could not load data — check your internet connection or the CSV link.';
+    console.error(e);
+  }
+}
+
+function renderAll() {
+  // Match responses to master list
+  const submittedEmails = new Set();
+  responses.forEach(r => {
+    const m = matchToMaster(r);
+    if (m) submittedEmails.add(m.email);
+  });
+
+  const pending = MASTER.filter(m => !submittedEmails.has(m.email));
+  const depositConfirmed = responses.filter(r => (r['Have you paid your $400 security deposit?'] || '').includes('already paid')).length;
+  const esaCount = responses.filter(r => (r['Do you have or plan to have an ESA or pet in your room?'] || '').toLowerCase().includes('yes')).length;
+
+  // Stats
+  document.getElementById('stat-total').textContent = MASTER.length;
+  document.getElementById('stat-submitted').textContent = responses.length;
+  document.getElementById('stat-pending').textContent = pending.length;
+  document.getElementById('stat-deposit').textContent = depositConfirmed;
+  document.getElementById('stat-esa').textContent = esaCount;
+
+  renderOverview(pending, submittedEmails, depositConfirmed);
+  renderResponseCards(submittedEmails);
+  renderPending(pending);
+  renderAlerts();
+  renderInterests();
+  renderMatching();
+}
+
+function renderOverview(pending, submittedEmails, depositConfirmed) {
+  const pct = Math.round((responses.length / MASTER.length) * 100);
+  let html = '';
+
+  // Progress
+  html += `<div class="card">
+    <div style="font-weight:600;font-size:15px;margin-bottom:12px">Response progress</div>
+    <div class="bar-wrap">
+      <div style="font-size:13px;color:var(--soft);width:90px">Submitted</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="bar-label">${responses.length}/${MASTER.length}</div>
+    </div>`;
+
+  // Deposit progress
+  const depPct = Math.round((depositConfirmed / responses.length) * 100) || 0;
+  html += `<div class="bar-wrap" style="margin-top:6px">
+    <div style="font-size:13px;color:var(--soft);width:90px">Deposit ok</div>
+    <div class="bar-bg"><div class="bar-fill" style="width:${depPct}%;background:var(--green)"></div></div>
+    <div class="bar-label">${depositConfirmed}</div>
+  </div></div>`;
+
+  // Pending list
+  if (pending.length > 0) {
+    html += `<div class="sec">Still waiting on (${pending.length})</div>`;
+    html += `<div class="card"><div style="display:flex;flex-direction:column;gap:6px">`;
+    pending.forEach(p => {
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+        <div style="font-size:13px"><strong>${p.name}</strong> <span style="color:var(--muted);font-size:12px">${p.email}</span></div>
+        ${p.tags.map(t=>`<span class="tag ${t==='special'?'red':t==='officer'?'purple':t==='paired'?'green':'gray'}">${t}</span>`).join('')}
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // Room type distribution
+  const roomPrefs = {};
+  responses.forEach(r => {
+    const pref = (r['Preferred room type'] || 'No answer').split('(')[0].trim();
+    roomPrefs[pref] = (roomPrefs[pref] || 0) + 1;
+  });
+  html += `<div class="sec">Room type preferences</div><div class="card">`;
+  Object.entries(roomPrefs).sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => {
+    const pct2 = Math.round((v/responses.length)*100);
+    html += `<div class="bar-wrap">
+      <div style="font-size:12px;color:var(--soft);width:120px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${k}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct2}%"></div></div>
+      <div class="bar-label">${v}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Schedule distribution
+  const bedtimes = {};
+  responses.forEach(r => {
+    const b = r['I typically go to sleep at:'] || 'No answer';
+    bedtimes[b] = (bedtimes[b] || 0) + 1;
+  });
+  html += `<div class="sec">Bedtime distribution</div><div class="card">`;
+  Object.entries(bedtimes).sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => {
+    const pct2 = Math.round((v/responses.length)*100);
+    html += `<div class="bar-wrap">
+      <div style="font-size:12px;color:var(--soft);width:160px">${k}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct2}%;background:var(--amber)"></div></div>
+      <div class="bar-label">${v}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('overview-content').innerHTML = html;
+}
+
+function renderResponseCards(submittedEmails) {
+  const grid = document.getElementById('responses-grid');
+  allCards = [];
+
+  // Submitted responses
+  responses.forEach(r => {
+    const master = matchToMaster(r);
+    const name = r['Full legal name'] || r['Preferred name or nickname'] || 'Unknown';
+    const email = r['School email address'] || r['Email Address'] || '';
+    const bed = r['I typically go to sleep at:'] || '—';
+    const wake = r['I typically wake up at:'] || '—';
+    const sleep = r['I am a:'] || '—';
+    const neat = r['How neat are you?'] || '—';
+    const temp = r['Room temperature preference'] || '—';
+    const roomPref = r['Preferred room type'] || '—';
+    const deposit = r['Have you paid your $400 security deposit?'] || '—';
+    const esa = r['Do you have or plan to have an ESA or pet in your room?'] || '—';
+    const esaType = r['If you have an ESA or pet, what type?'] || '';
+    const roommateReq = r['Is there a specific resident you would like to room with?'] || '';
+    const noRoommate = r['Is there anyone you would prefer NOT to be paired with?'] || '';
+    const allergies = r['Do you have allergies to animals?'] || '—';
+    const health = r['Any other health conditions relevant to room placement?'] || '';
+    const major = r['Major or graduate program'] || '—';
+    const hobbies = r['Main hobbies or interests (check all that apply)'] || '';
+    const social = r['How would you describe your social personality at home?'] || '—';
+    const funFact = r['One fun or unexpected fact about yourself'] || '';
+
+    const depositOk = deposit.includes('already paid');
+    const hasESA = esa.toLowerCase().includes('yes');
+    const hasSevereAllergy = allergies.toLowerCase().includes('severe');
+
+    const tags = [];
+    if (master) { master.tags.forEach(t => tags.push(t)); }
+    if (hasESA) tags.push('esa');
+    if (hasSevereAllergy) tags.push('allergy');
+
+    const tagColors = {officer:'purple',paired:'green',special:'red',esa:'amber',allergy:'red',gray:'gray'};
+
+    const searchText = (name+email+major+hobbies+roommateReq+noRoommate+funFact).toLowerCase();
+
+    const card = {searchText, html: `
+      <div class="rcard" data-search="${searchText}">
+        <span class="rbadge ${depositOk?'yes':'no'}">${depositOk?'Deposit ok':'Deposit?'}</span>
+        <div class="rname">${name}</div>
+        <div class="remail">${email}</div>
+        <div style="margin-bottom:8px">${tags.map(t=>`<span class="tag ${tagColors[t]||'gray'}">${t}</span>`).join('')}</div>
+        <div class="rrow"><span class="lbl">Bed / Wake</span><span class="val">${bed.replace('I typically go to sleep at:','').trim()} / ${wake}</span></div>
+        <div class="rrow"><span class="lbl">Sleep type</span><span class="val">${sleep.split('—')[0].trim()}</span></div>
+        <div class="rrow"><span class="lbl">Neat / Temp</span><span class="val">${neat} · ${temp.split('(')[0].trim()}</span></div>
+        <div class="rrow"><span class="lbl">Room pref</span><span class="val">${roomPref.split('(')[0].trim()}</span></div>
+        <div class="rrow"><span class="lbl">Major</span><span class="val">${major}</span></div>
+        ${roommateReq ? `<div class="rrow"><span class="lbl">Wants</span><span class="val" style="color:var(--green)">${roommateReq}</span></div>` : ''}
+        ${noRoommate ? `<div class="rrow"><span class="lbl">Not with</span><span class="val" style="color:var(--red)">${noRoommate}</span></div>` : ''}
+        ${hasESA ? `<div class="rrow"><span class="lbl">ESA/Pet</span><span class="val" style="color:var(--amber)">${esaType||'yes'}</span></div>` : ''}
+        ${hasSevereAllergy ? `<div class="rrow"><span class="lbl">Allergy</span><span class="val" style="color:var(--red)">SEVERE</span></div>` : ''}
+        ${health ? `<div class="rrow"><span class="lbl">Health</span><span class="val">${health}</span></div>` : ''}
+        ${funFact ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic;padding-top:8px;border-top:1px solid var(--border)">"${funFact}"</div>` : ''}
+      </div>`};
+    allCards.push(card);
+  });
+
+  // Pending (not submitted)
+  MASTER.forEach(m => {
+    if (!submittedEmails.has(m.email)) {
+      allCards.push({searchText: m.name.toLowerCase(), html: `
+        <div class="rcard pending" data-search="${m.name.toLowerCase()}">
+          <span class="rbadge no">No response</span>
+          <div class="rname">${m.name}</div>
+          <div class="remail">${m.email}</div>
+          <div><span class="tag gray">pending</span>${m.room!=='TBD'?`<span class="tag purple">Rm ${m.room}</span>`:''}</div>
+        </div>`});
+    }
+  });
+
+  grid.innerHTML = allCards.map(c => c.html).join('');
+}
+
+function filterCards() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const grid = document.getElementById('responses-grid');
+  grid.innerHTML = allCards.filter(c => c.searchText.includes(q)).map(c => c.html).join('');
+}
+
+function renderPending(pending) {
+  let html = `<div class="sec">Residents who haven't responded yet (${pending.length})</div>`;
+  html += `<div class="card"><table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Room</th><th>Notes</th></tr></thead><tbody>`;
+  pending.forEach(p => {
+    const notes = p.tags.includes('special') ? '<span class="tag red">special needs</span>' :
+                  p.tags.includes('paired') ? '<span class="tag green">confirmed pair</span>' :
+                  p.tags.includes('officer') ? '<span class="tag purple">officer</span>' : '—';
+    html += `<tr><td><strong>${p.name}</strong></td><td style="font-size:12px;color:var(--muted)">${p.email}</td><td>${p.room!=='TBD'?`<span class="tag purple">Rm ${p.room}</span>`:'TBD'}</td><td>${notes}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  html += `<div class="sec">Follow-up email</div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px">Copy this and send to the ${pending.length} pending residents</div>
+    <div style="background:var(--bg);padding:14px;border-radius:8px;font-size:13px;line-height:1.8;white-space:pre-wrap">Hi [Name],
+
+Just a quick reminder — we haven't received your ZB roommate survey yet!
+
+Please complete it by April 19:
+https://docs.google.com/forms/d/e/1FAIpQLSec_JcTMFuxp5zrVp4XZ5dp4fOnFCyBbM3pvVYv5fTGpvj5BA/viewform
+
+It takes about 8-10 minutes and helps ensure you get a compatible roommate and the right room. It also confirms your deposit status.
+
+Questions? Reply here or email melia.zumbado@gmail.com.
+
+Maria Elia — House President ZB 2026-27</div>
+  </div>`;
+
+  document.getElementById('pending-content').innerHTML = html;
+}
+
+function renderAlerts() {
+  // Build alerts from actual responses
+  let html = `<div class="sec">Health & safety — non-negotiable</div>`;
+
+  // Check for severe allergies
+  const severeAllergy = responses.filter(r => (r['Do you have allergies to animals?']||'').toLowerCase().includes('severe'));
+  const hasESA = responses.filter(r => (r['Do you have or plan to have an ESA or pet in your room?']||'').toLowerCase().includes('yes'));
+
+  if (severeAllergy.length > 0 && hasESA.length > 0) {
+    html += `<div class="alert red"><div class="alert-title">🚨 Floor separation required — severe allergy vs ESA/pet</div><p>`;
+    severeAllergy.forEach(r => { html += `<strong>${r['Full legal name']}</strong> reported a severe animal allergy — cannot be on the same floor as any pet.<br>`; });
+    hasESA.forEach(r => { html += `<strong>${r['Full legal name']}</strong> has an ESA/pet (${r['If you have an ESA or pet, what type?']||'type TBD'}).<br>`; });
+    html += `<br>Assign ESA residents and severe-allergy residents to different floors.</p></div>`;
+  }
+
+  // Health conditions
+  const healthNeeds = responses.filter(r => {
+    const h = (r['Any other health conditions relevant to room placement?']||'').trim();
+    return h.length > 2 && h.toLowerCase() !== 'none' && h.toLowerCase() !== 'n/a' && h.toLowerCase() !== 'no';
+  });
+  if (healthNeeds.length > 0) {
+    html += `<div class="sec">Health conditions to accommodate</div>`;
+    healthNeeds.forEach(r => {
+      html += `<div class="alert amber"><div class="alert-title">⚠️ ${r['Full legal name']}</div><p>${r['Any other health conditions relevant to room placement?']}</p></div>`;
+    });
+  }
+
+  // Requested pairs
+  const pairRequests = responses.filter(r => (r['Is there a specific resident you would like to room with?']||'').trim().length > 1);
+  if (pairRequests.length > 0) {
+    html += `<div class="sec">Roommate requests</div>`;
+    pairRequests.forEach(r => {
+      html += `<div class="alert green"><div class="alert-title">✅ ${r['Full legal name']} wants to room with:</div><p>${r['Is there a specific resident you would like to room with?']}</p></div>`;
+    });
+  }
+
+  // No-pair requests
+  const noPairs = responses.filter(r => (r['Is there anyone you would prefer NOT to be paired with?']||'').trim().length > 1);
+  if (noPairs.length > 0) {
+    html += `<div class="sec">Do NOT pair</div>`;
+    noPairs.forEach(r => {
+      html += `<div class="alert red"><div class="alert-title">🚫 ${r['Full legal name']} — NOT with:</div><p>${r['Is there anyone you would prefer NOT to be paired with?']}</p></div>`;
+    });
+  }
+
+  // Deposit issues
+  const depositIssue = responses.filter(r => {
+    const d = r['Have you paid your $400 security deposit?'] || '';
+    return !d.includes('already paid');
+  });
+  if (depositIssue.length > 0) {
+    html += `<div class="sec">Deposit follow-up needed (${depositIssue.length})</div><div class="card"><table class="tbl"><thead><tr><th>Name</th><th>Deposit status</th><th>Notes</th></tr></thead><tbody>`;
+    depositIssue.forEach(r => {
+      html += `<tr><td><strong>${r['Full legal name']}</strong></td><td>${r['Have you paid your $400 security deposit?']||'—'}</td><td style="font-size:12px;color:var(--muted)">${r['Anything we should know about your deposit?']||'—'}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  document.getElementById('alerts-content').innerHTML = html || '<div class="card" style="color:var(--muted)">No alerts yet — waiting for responses.</div>';
+}
+
+function renderInterests() {
+  const hobbyCounts = {};
+  const eventCounts = {};
+  const communityCounts = {};
+  const majors = [];
+  const socialTypes = {};
+
+  responses.forEach(r => {
+    const hobbies = (r['Main hobbies or interests (check all that apply)'] || '').split(',');
+    hobbies.forEach(h => {
+      const key = h.trim().split('(')[0].trim();
+      if (key) hobbyCounts[key] = (hobbyCounts[key]||0)+1;
+    });
+    const events = (r['What events or activities would you actually show up to?'] || '').split(',');
+    events.forEach(e => {
+      const key = e.trim();
+      if (key) eventCounts[key] = (eventCounts[key]||0)+1;
+    });
+    const community = (r['What kind of community do you hope to find at Zoe Bayliss?'] || '').split(',');
+    community.forEach(c => {
+      const key = c.trim();
+      if (key) communityCounts[key] = (communityCounts[key]||0)+1;
+    });
+    if (r['Major or graduate program']) majors.push(r['Major or graduate program']);
+    const s = (r['How would you describe your social personality at home?']||'').split('—')[0].trim();
+    if (s) socialTypes[s] = (socialTypes[s]||0)+1;
+  });
+
+  let html = `<div class="sec">Top hobbies & interests</div>
+  <div class="card"><div class="interest-cloud">`;
+  Object.entries(hobbyCounts).sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => {
+    html += `<span class="interest-pill ${v>=5?'big':''}">${k} <strong>${v}</strong></span>`;
+  });
+  html += `</div></div>`;
+
+  html += `<div class="sec">Events residents would actually attend</div><div class="card">`;
+  Object.entries(eventCounts).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([k,v]) => {
+    const pct = Math.round((v/responses.length)*100);
+    html += `<div class="bar-wrap"><div style="font-size:12px;color:var(--soft);width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${k}</div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:var(--green)"></div></div><div class="bar-label">${v}</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="sec">Community hopes</div><div class="card">`;
+  Object.entries(communityCounts).sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => {
+    const pct = Math.round((v/responses.length)*100);
+    html += `<div class="bar-wrap"><div style="font-size:12px;color:var(--soft);width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${k}</div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:var(--purple)"></div></div><div class="bar-label">${v}</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="sec">Social personality at home</div><div class="card">`;
+  Object.entries(socialTypes).sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => {
+    const pct = Math.round((v/responses.length)*100);
+    html += `<div class="bar-wrap"><div style="font-size:12px;color:var(--soft);width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${k}</div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:var(--amber)"></div></div><div class="bar-label">${v}</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="sec">Fields of study (${majors.length} responses)</div><div class="card"><div class="interest-cloud">`;
+  majors.forEach(m => { html += `<span class="interest-pill">${m}</span>`; });
+  html += `</div></div>`;
+
+  document.getElementById('interests-content').innerHTML = html;
+}
+
+function renderMatching() {
+  // Group by schedule compatibility
+  const early = responses.filter(r => ['Before 10 pm','10 pm – 12 am'].includes(r['I typically go to sleep at:']));
+  const late = responses.filter(r => ['12 am – 2 am','After 2 am / very irregular'].includes(r['I typically go to sleep at:']));
+  const warm = responses.filter(r => (r['Room temperature preference']||'').includes('Warm'));
+  const cool = responses.filter(r => (r['Room temperature preference']||'').includes('Cool') || (r['Room temperature preference']||'').includes('Medium'));
+
+  let html = `<div class="sec">Schedule groups</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px;color:var(--amber)">Early / standard (bed before midnight) — ${early.length}</div>
+      ${early.map(r=>`<div style="font-size:13px;padding:3px 0;border-bottom:1px solid var(--border)">${r['Full legal name']} <span style="color:var(--muted);font-size:12px">${r['I typically go to sleep at:']}</span></div>`).join('')}
+    </div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px;color:var(--purple)">Night owls (bed after midnight) — ${late.length}</div>
+      ${late.map(r=>`<div style="font-size:13px;padding:3px 0;border-bottom:1px solid var(--border)">${r['Full legal name']} <span style="color:var(--muted);font-size:12px">${r['I typically go to sleep at:']}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+  // Light vs deep sleepers
+  const light = responses.filter(r => (r['I am a:']||'').toLowerCase().includes('light'));
+  const deep = responses.filter(r => (r['I am a:']||'').toLowerCase().includes('deep'));
+
+  html += `<div class="sec">Sleep sensitivity</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px;color:var(--red)">Light sleepers — ${light.length} <span style="font-weight:400;font-size:12px">(need quiet roommates)</span></div>
+      ${light.map(r=>`<div style="font-size:13px;padding:3px 0;border-bottom:1px solid var(--border)">${r['Full legal name']}</div>`).join('')}
+    </div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px;color:var(--green)">Deep sleepers — ${deep.length} <span style="font-weight:400;font-size:12px">(most flexible)</span></div>
+      ${deep.map(r=>`<div style="font-size:13px;padding:3px 0;border-bottom:1px solid var(--border)">${r['Full legal name']}</div>`).join('')}
+    </div>
+  </div>`;
+
+  // Neatness distribution
+  const neatGroups = {};
+  responses.forEach(r => {
+    const n = r['How neat are you?'] || '?';
+    neatGroups[n] = (neatGroups[n]||[]);
+    neatGroups[n].push(r['Full legal name']);
+  });
+  html += `<div class="sec">Neatness scale</div><div class="card"><table class="tbl"><thead><tr><th>Score</th><th>Residents</th></tr></thead><tbody>`;
+  [5,4,3,2,1].forEach(n => {
+    const group = neatGroups[String(n)] || neatGroups[n] || [];
+    if (group.length > 0) {
+      html += `<tr><td><strong>${n}/5</strong></td><td style="font-size:13px">${group.join(', ')}</td></tr>`;
+    }
+  });
+  html += `</tbody></table></div>`;
+
+  document.getElementById('matching-content').innerHTML = html;
+}
+
+function showTab(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Load on startup
+loadData();
+</script>
+</body>
+</html>
